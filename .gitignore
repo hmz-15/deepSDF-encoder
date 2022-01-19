@@ -130,3 +130,6 @@ dmypy.json
 
 sampler_cuda/bin
 sampler_cuda/build
+
+di-checkpoints/
+di-datasets/
