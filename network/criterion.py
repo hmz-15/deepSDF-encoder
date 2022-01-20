@@ -20,7 +20,7 @@ def l1_loss(args, info: dict, pd_sdf: torch.Tensor, gt_sdf: torch.Tensor, **kwar
         gt_sdf = torch.clamp(gt_sdf, -args.clamping_distance, args.clamping_distance)
         pd_sdf = torch.clamp(pd_sdf, -args.clamping_distance, args.clamping_distance)
 
-    sdf_loss = (gt_sdf - pd_sdf).abs().sum() / info["num_sdf_samples"]
+    sdf_loss = (gt_sdf.squeeze() - pd_sdf).abs().sum() / info["num_sdf_samples"]
     return {
         'sdf': sdf_loss
     }

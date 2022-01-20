@@ -23,48 +23,17 @@ def perturb_normal(normals, theta_range):
     return perturbed_normal
 
 
-# def collate_full(batch):
-#     # locs.float(), lif_samples.float(), full_pc_samples.float(), corr_locs.float(), corr_pc_samples.float()
-#     batch = list(filter(lambda x: len(x[0])!=0, batch))
-#     if len(batch) == 0:
-#         return [], -1
-#     idx = [batch[0][1]]
-#     lif_samples = batch[0][0][1]
-#     full_pc_samples = batch[0][0][2]
-#     corr_pc_samples = batch[0][0][4]
+def collate(batch):
+    # sdf_samples.float(), pc_data.float(), idx
+    batch = list(filter(lambda x: len(x[0])!=0, batch))
+    if len(batch) == 0:
+        return [], -1
 
-#     locs = batch[0][0][0]
-#     locs = torch.cat([locs, torch.zeros(locs.shape[0], 1).long()], dim=1)
-#     corr_locs = batch[0][0][3]
-#     corr_locs = torch.cat([corr_locs, torch.zeros(corr_locs.shape[0], 1).long()], dim=1)
+    idx = [batch[b][1] for b in range(0, len(batch))]
+    sdf_samples = torch.stack([batch[b][0][0] for b in range(0, len(batch))], dim=0)
+    pc_samples  = torch.stack([batch[b][0][1] for b in range(0, len(batch))], dim=0)
 
-#     precompute_occ_flag = False
-#     if len(batch[0][0]) > 5:
-#         precompute_occ_flag = True
-#         occ_gt = batch[0][0][5]
-#         occ_weights = batch[0][0][6]
-    
-#     for b in range(1, len(batch)):
-#         idx += [batch[b][1]]
-#         lif_samples = torch.cat([lif_samples, batch[b][0][1]], dim=0)
-#         full_pc_samples = torch.cat([full_pc_samples, batch[b][0][2]], dim=0)
-#         corr_pc_samples = torch.cat([corr_pc_samples, batch[b][0][4]], dim=0)
-
-#         cur_locs = batch[b][0][0]
-#         cur_locs = torch.cat([cur_locs, torch.ones(cur_locs.shape[0], 1).long()*b], dim=1)
-#         locs = torch.cat([locs, cur_locs], dim=0)
-#         cur_corr_locs = batch[b][0][3]
-#         cur_corr_locs = torch.cat([cur_corr_locs, torch.ones(cur_corr_locs.shape[0], 1).long()*b], dim=1)
-#         corr_locs = torch.cat([corr_locs, cur_corr_locs], dim=0)
-
-#         if precompute_occ_flag:
-#             occ_gt = torch.cat([occ_gt, batch[b][0][5]], dim=0)
-#             occ_weights = torch.cat([occ_weights, batch[b][0][6]], dim=0)
-
-#     if precompute_occ_flag:
-#         return [locs.long(), lif_samples.float(), full_pc_samples.float(), corr_locs.long(), corr_pc_samples.float(), occ_gt, occ_weights], idx
-#     else:
-#         return [locs.long(), lif_samples.float(), full_pc_samples.float(), corr_locs.long(), corr_pc_samples.float()], idx
+    return [sdf_samples.float(), pc_samples.float()], idx
 
 
 class SDFDataset(data.Dataset):
@@ -115,8 +84,7 @@ class SDFDataset(data.Dataset):
             pc_data[:, 3:6] = perturb_normal(pc_data[:, 3:6], np.deg2rad(self.augment_noise[1]))
 
         if not isinstance(pc_data, torch.Tensor):
-            pc_data = torch.from_numpy(pc_data)            
-
+            pc_data = torch.from_numpy(pc_data)          
         return [sdf_samples.float(), pc_data.float(), idx]
 
 

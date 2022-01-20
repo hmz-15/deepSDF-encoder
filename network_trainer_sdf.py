@@ -19,7 +19,7 @@ import torch.multiprocessing as mp
 
 from torch.profiler import profile, record_function, ProfilerActivity
 
-from dataset.training import sdf_dataset
+from dataset import sdf_dataset
 from network import criterion, utility
 from utils import exp_util
 
@@ -75,6 +75,7 @@ def prepare_dataloaders(rank, args, train_dataset, val_dataset):
             train_dataset,
             batch_size=args.batch_size,
             shuffle=False,
+            collate_fn=sdf_dataset.collate,
             num_workers=args.num_workers,
             drop_last=True,
             # pin_memory=True,
@@ -84,6 +85,7 @@ def prepare_dataloaders(rank, args, train_dataset, val_dataset):
             train_dataset,
             batch_size=args.batch_size,
             shuffle=True,
+            collate_fn=sdf_dataset.collate,
             num_workers=args.num_workers,
             drop_last=True,
             pin_memory=True)
@@ -93,6 +95,7 @@ def prepare_dataloaders(rank, args, train_dataset, val_dataset):
             val_dataset,
             batch_size=args.batch_size,
             shuffle=True,
+            collate_fn=sdf_dataset.collate,
             num_workers=1,
             drop_last=True,
             pin_memory=True)
@@ -146,9 +149,15 @@ def compute_loss(args, loss_func_args, encoder, decoder, batch_loss, batch_stats
             if mode == 'train':
                 xyz[i].requires_grad_(True)
             net_input = torch.cat([lat_vecs_chunk[i], xyz[i]], dim=1)
-            sdf_pred, std_pred = decoder(net_input)
-            batch_loss.update_loss_dict(criterion.neg_log_likelihood(args=loss_func_args, pd_sdf=sdf_pred, pd_sdf_std=std_pred, \
-                                                        gt_sdf=sdf[i], info={"num_sdf_samples": num_sdf_samples}, loss_name='ll'))
+
+            if args.pred_sdf_std:
+                sdf_pred, std_pred = decoder(net_input)
+                batch_loss.update_loss_dict(criterion.neg_log_likelihood(args=loss_func_args, pd_sdf=sdf_pred, pd_sdf_std=std_pred, \
+                                                            gt_sdf=sdf[i], info={"num_sdf_samples": num_sdf_samples}, loss_name='ll'))
+            else:
+                sdf_pred = decoder(net_input)
+                batch_loss.update_loss_dict(criterion.l1_loss(args=loss_func_args, pd_sdf=sdf_pred, \
+                                                            gt_sdf=sdf[i], info={"num_sdf_samples": num_sdf_samples}))
             xyz[i].requires_grad_(False)
             if mode == 'train':
                 if i < batch_split - 1:
@@ -219,6 +228,7 @@ def train(rank, args, save_base_dir, train_dataset, val_dataset):
             val_running_meter = exp_util.RunningAverageMeter(alpha=0.3)
             stats_train_meter = exp_util.AverageMeter()
             stats_val_meter = exp_util.AverageMeter()
+            batch_bar = tqdm.tqdm(total=len(train_loader), leave=False, desc='train')
 
         # Training
         if args.train_encoder:
@@ -240,25 +250,27 @@ def train(rank, args, save_base_dir, train_dataset, val_dataset):
 
             loss_res = batch_loss.get_accumulated_loss_dict()
             stats_res = batch_stats.get_accumulated_loss_dict()
-
-            if rank == 0:
-                logging.info('train iter: {}, loss: {}, stats: {}'.format(train_it, dict(loss_res), dict(stats_res)))
             del batch_loss, batch_stats
-
+            
             train_it += 1     
             if rank == 0:
+                batch_bar.update()
                 train_running_meter.append_loss(loss_res)
                 train_meter.append_loss(loss_res)
                 stats_train_meter.append_loss(stats_res)
+                # logging.info('train iter: {}, loss: {}, stats: {}'.format(train_it, dict(loss_res), dict(stats_res)))
+                batch_bar.set_postfix(train_running_meter.get_loss_dict())
                 if train_it % 50 == 0:
                     for loss_name, loss_val in loss_res.items():
                         viz.update('train/' + loss_name, train_it, {'scalar': loss_val})
                     for stats_name, stats_val in stats_res.items():
                         viz.update('train/' + stats_name, val_it, {'scalar': stats_val})
 
-            # print(prof.key_averages(group_by_stack_n=5).table(sort_by="cpu_time_total", row_limit=10))
             if args.run_parallel:
                 torch.distributed.barrier()     
+
+        if rank == 0:
+            batch_bar.close()
 
         # Validation only in the main thread
         if rank == 0:
@@ -267,6 +279,7 @@ def train(rank, args, save_base_dir, train_dataset, val_dataset):
             if args.train_decoder:
                 decoder.eval()
 
+            batch_bar = tqdm.tqdm(total=len(val_loader), leave=False, desc='val')
             for data_list, idx in val_loader:
                 if len(data_list) == 0:
                     continue
@@ -276,18 +289,22 @@ def train(rank, args, save_base_dir, train_dataset, val_dataset):
 
                 loss_res = batch_loss.get_accumulated_loss_dict()
                 stats_res = batch_stats.get_accumulated_loss_dict()
-                logging.info('val iter: {}, loss: {}, stats: {}'.format(val_it, dict(loss_res), dict(stats_res)))
+                # logging.info('val iter: {}, loss: {}, stats: {}'.format(val_it, dict(loss_res), dict(stats_res)))
                 del batch_loss, batch_stats
 
-                val_it += 1     
+                val_it += 1 
+                batch_bar.update()    
                 val_running_meter.append_loss(loss_res)
                 val_meter.append_loss(loss_res)
                 stats_val_meter.append_loss(stats_res)
+                batch_bar.set_postfix(val_running_meter.get_loss_dict())
                 if val_it % 50 == 0:
                     for loss_name, loss_val in loss_res.items():
                         viz.update('val/' + loss_name, val_it, {'scalar': loss_val})
                     for stats_name, stats_val in stats_res.items():
                         viz.update('val/' + stats_name, val_it, {'scalar': stats_val})
+            
+            batch_bar.close()
 
         # Record epoch statistics & store checkpoints
         if rank == 0:
@@ -343,6 +360,8 @@ def main():
 
     # Latent code length
     args.encoder_specs.update({"latent_size": args.code_length})
+    # Predict uncertainty of sdf or not
+    args.decoder_specs.update({"pred_std": args.pred_sdf_std})
     # Checkpoints
     checkpoints = list(range(args.snapshot_frequency, args.num_epochs + 1, args.snapshot_frequency))
     for checkpoint in args.additional_snapshots:
@@ -360,6 +379,7 @@ def main():
         args.world_size = torch.cuda.device_count()
         if args.world_size == 1:
             args.run_parallel = False
+            logging.info("Disable parallel training!")
     else:
         logging.info("Let's use 1 GPU!")
     

@@ -6,6 +6,9 @@ num_workers: 4
 batch_split: 1
 num_sdf_samples: 4096
 
+# whether to predict uncertainty of sdf, use negtive log likelyhood loss if enabled
+pred_sdf_std: false
+
 train_encoder: true
 train_decoder: true
 
@@ -45,7 +48,6 @@ additional_snapshots: [2]
 
 # SDF samples
 training_loss:
-    types: [ "neg_log_likelihood", "reg_loss" ]
     enforce_minmax: true
     clamping_distance: 0.2
     code_reg_lambda: 1.0e-2

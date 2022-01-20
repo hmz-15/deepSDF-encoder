@@ -7,7 +7,7 @@ import torch.nn.functional as F
 
 
 class Model(nn.Module):
-    def __init__(self, latent_size, dims, dropout=None, dropout_prob=0.0, norm_layers=(), latent_in=(), weight_norm=False):
+    def __init__(self, latent_size, dims, dropout=None, dropout_prob=0.0, norm_layers=(), latent_in=(), weight_norm=False, pred_std=False):
         """
         :param latent_size: Size of the latent vector
         :param dims:        Intermediate network neurons
@@ -16,6 +16,7 @@ class Model(nn.Module):
         :param latent_in:   From which layer to re-feed in the latent_size+3 input vector
         :param weight_norm: Whether to use weight normalization
         :param norm_layers: Layers to append normalization (Either WeightNorm or LayerNorm depend of weight_norm var)
+        :param pred_std: predict uncertainty of sdf value
         """
         super().__init__()
 
@@ -26,6 +27,7 @@ class Model(nn.Module):
         self.norm_layers = norm_layers
         self.latent_in = latent_in
         self.weight_norm = weight_norm
+        self.pred_std = pred_std
         
         for layer in range(self.num_layers - 1):
             # a linear layer with input `dims[layer]` and output `dims[layer + 1]`.
@@ -45,8 +47,9 @@ class Model(nn.Module):
             if (not weight_norm) and self.norm_layers is not None and layer in self.norm_layers:
                 setattr(self, "bn" + str(layer), nn.LayerNorm(out_dim))
                 # In fact, should be "layer normalization" instead of "bn"
-            
-        self.uncertainty_layer = nn.Linear(dims[-2], 1)
+        
+        if self.pred_std:
+            self.uncertainty_layer = nn.Linear(dims[-2], 1)
 
         self.relu = nn.ReLU()
         self.dropout_prob = dropout_prob
@@ -64,7 +67,7 @@ class Model(nn.Module):
                 x = torch.cat([x, input], dim=1)
 
             # For the last layer, also branch out to output uncertainty.
-            if layer == self.num_layers - 2:
+            if self.pred_std and layer == self.num_layers - 2:
                 std = self.uncertainty_layer(x)
                 # std = 0.1 + 0.9 * F.softplus(std)
                 std = 0.05 + 0.5 * F.softplus(std)
@@ -85,4 +88,7 @@ class Model(nn.Module):
                     x = F.dropout(x, p=self.dropout_prob, training=self.training)
         x = self.th(x)
 
-        return x, std
+        if self.pred_std:
+            return x, std
+        else:
+            return x

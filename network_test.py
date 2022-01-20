@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 
-from dataset.training import lif_dataset as ldata
+# from dataset import lif_dataset as ldata
 from network import utility
 from utils import exp_util, vis_util
 import system.ext

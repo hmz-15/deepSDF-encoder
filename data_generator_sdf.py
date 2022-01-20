@@ -125,7 +125,7 @@ def generate_samples(idx: int, args: argparse.ArgumentParser, provider, output_b
 
 
 if __name__ == '__main__':
-    from dataset.training.cutting_shape import CuttingShape
+    from dataset.cutting_shape import CuttingShape
     logging.basicConfig(level=logging.INFO)
 
     exp_util.init_seed(4)
