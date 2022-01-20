@@ -1,30 +1,31 @@
 run_name: "train_cutting"
 
-num_epochs: 600
-batch_size: 64
+num_epochs: 200
+batch_size: 20
 num_workers: 4
-batch_split: 1
-num_sdf_samples: 4096
+batch_split: 1 # use 1
+num_sdf_samples: 4096 # number of sdf samples for training
 
 # whether to predict uncertainty of sdf, use negtive log likelyhood loss if enabled
 pred_sdf_std: false
 
 train_encoder: true
 train_decoder: true
+run_parallel: true # parallel training
+
+# Code specification
+code_bound: null
+code_length: 16 # latent vector length
+
+# Dataset
+train_set:
+  - { "data_path": "di-datasets/cutting_shape", "num_surface_sample": 128, "augment_noise": [0.025, 40.0]}
 
 lr_schedule:
   # For decoder parameters
   - { "Type" : "Step", "Initial" : 0.001, "Interval" : 80, "Factor" : 0.4 }
   # For encoder parameters
   - { "Type" : "Step", "Initial" : 0.001, "Interval" : 80, "Factor" : 0.4 }
-
-# Dataset.
-train_set:
-  - { "data_path": "di-datasets/cutting_shape", "num_surface_sample": 128, "augment_noise": [0.025, 40.0]}
-
-# Code specification
-code_bound: null
-code_length: 16
 
 # Decoder specification
 decoder_name: "di_decoder"

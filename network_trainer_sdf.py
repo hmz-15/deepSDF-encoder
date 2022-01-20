@@ -373,7 +373,6 @@ def main():
     logging.info(args)
 
     # Num of GPU
-    args.run_parallel = True
     if args.run_parallel:
         logging.info("Let's use {} GPUs!".format(torch.cuda.device_count()))
         args.world_size = torch.cuda.device_count()
