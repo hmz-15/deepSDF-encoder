@@ -133,5 +133,6 @@ sampler_cuda/build
 
 di-checkpoints/
 di-datasets/
+di-outputs/
 
 .vscode/

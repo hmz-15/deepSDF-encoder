@@ -47,7 +47,7 @@ def load_model(training_hyper_path: str, use_epoch: int = -1, mode: str = 'cnp')
 
     model = Networks()
     decoder_module = importlib.import_module("network." + args.decoder_name)
-    model.decoder = decoder_module.Model(args.code_length, neighbor_mode=args.neighbor_mode, **args.decoder_specs).cuda()
+    model.decoder = decoder_module.Model(args.code_length, **args.decoder_specs).cuda()
     encoder_module = importlib.import_module("network." + args.encoder_name)
     model.encoder = encoder_module.Model(**args.encoder_specs, mode=mode).cuda()
     if args.checkpoint is not None:
@@ -60,8 +60,6 @@ def load_model(training_hyper_path: str, use_epoch: int = -1, mode: str = 'cnp')
 
     print("Number of decoder parameters: {}".format(sum(p.data.nelement() for p in model.decoder.parameters())))
     print("Number of encoder parameters: {}".format(sum(p.data.nelement() for p in model.encoder.parameters())))
-
-    args.run_cat_neighbor = False if args.neighbor_mode is None else True
 
     return model, args
 

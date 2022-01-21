@@ -9,3 +9,4 @@ tqdm
 tensorboard
 pyyaml
 numba
+scikit-image
