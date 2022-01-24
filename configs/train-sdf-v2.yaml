@@ -1,10 +1,10 @@
 run_name: "train_cutting_v2"
 
-num_epochs: 2000
-batch_size: 64
+num_epochs: 600
+batch_size: 128
 num_workers: 16
 batch_split: 1 # use 1
-num_sdf_samples: 16384 # number of sdf samples for training
+num_sdf_samples: 4096 # number of sdf samples for training
 
 # whether to predict uncertainty of sdf, use negtive log likelyhood loss if enabled
 pred_sdf_std: false
@@ -15,7 +15,7 @@ run_parallel: false # parallel training
 
 # Code specification
 code_bound: null
-code_length: 32 # latent vector length
+code_length: 16 # latent vector length
 
 # Dataset
 train_set:
@@ -23,14 +23,14 @@ train_set:
 
 lr_schedule:
   # For decoder parameters
-  - { "Type" : "Step", "Initial" : 0.001, "Interval" : 500, "Factor" : 0.4 }
+  - { "Type" : "Step", "Initial" : 0.001, "Interval" : 100, "Factor" : 0.8 }
   # For encoder parameters
-  - { "Type" : "Step", "Initial" : 0.001, "Interval" : 500, "Factor" : 0.4 }
+  - { "Type" : "Step", "Initial" : 0.001, "Interval" : 100, "Factor" : 0.8 }
 
 # Decoder specification
 decoder_name: "di_decoder"
 decoder_specs:
-  dims: [ 128, 128, 128, 128 ]
+  dims: [ 64, 64, 64, 64 ]
   dropout: [0, 1, 2, 3, 4, 5]
   dropout_prob: 0.2
   norm_layers: [0, 1, 2, 3, 4, 5]
@@ -40,12 +40,12 @@ decoder_specs:
 # Encoder specification
 encoder_name: "di_encoder"
 encoder_specs:
-  per_point_feat: [ 6, 32, 64, 256 ]
+  per_point_feat: [ 6, 32, 64, 128 ]
   bn: {"class": "BatchNorm"}
 
 # Snapshots saving parameters (save checkpoints)
-snapshot_frequency: 50
-additional_snapshots: [2]
+snapshot_frequency: 100
+additional_snapshots: [2, 50]
 
 # SDF samples
 training_loss:

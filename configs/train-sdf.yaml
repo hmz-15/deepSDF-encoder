@@ -4,7 +4,7 @@ num_epochs: 500
 batch_size: 64
 num_workers: 16
 batch_split: 1 # use 1
-num_sdf_samples: 16384 # number of sdf samples for training
+num_sdf_samples: 4096 # number of sdf samples for training
 
 # whether to predict uncertainty of sdf, use negtive log likelyhood loss if enabled
 pred_sdf_std: false
