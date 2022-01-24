@@ -24,10 +24,11 @@ _bad_counter = Value('i', 0)
 
 def generate_samples(idx: int, args: argparse.ArgumentParser, provider, output_base, source_list, vis: bool = False):
     mesh_path, vcam, ref_bin_path, sampler_mult = provider[idx]
-    raw_obj_mesh = o3d.io.read_triangle_mesh(mesh_path)
-    raw_mesh_verts = np.asarray(raw_obj_mesh.vertices)
-    shape_size = np.linalg.norm(np.amax(raw_mesh_verts, axis=0) - np.amax(raw_mesh_verts, axis=0))/2
-    sampler_mult /= shape_size
+    # raw_obj_mesh = o3d.io.read_triangle_mesh(mesh_path)
+    # raw_mesh_verts = np.asarray(raw_obj_mesh.vertices)
+    # shape_size = np.linalg.norm(np.amax(raw_mesh_verts, axis=0) - np.amax(raw_mesh_verts, axis=0))/2
+    # offset = (np.amax(raw_mesh_verts, axis=0) + np.amax(raw_mesh_verts, axis=0))/2
+    # sampler_mult /= shape_size
 
     print(mesh_path)
 
