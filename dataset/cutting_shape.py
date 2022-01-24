@@ -10,7 +10,7 @@ class CuttingShape:
     Use cutting shape data (normalized)
     """
     def __init__(self, cutting_shape_path):
-        self.data_sources = glob.glob(cutting_shape_path + "/*.obj")
+        self.data_sources = sorted(glob.glob(cutting_shape_path + "/*.obj"))
 
     def __len__(self):
         return len(self.data_sources)
