@@ -20,7 +20,7 @@ import torch.multiprocessing as mp
 from torch.profiler import profile, record_function, ProfilerActivity
 
 from dataset import sdf_dataset
-from network import criterion, utility
+from network import criterion
 from utils import exp_util
 
 import gc

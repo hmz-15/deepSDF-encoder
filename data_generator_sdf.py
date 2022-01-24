@@ -24,6 +24,11 @@ _bad_counter = Value('i', 0)
 
 def generate_samples(idx: int, args: argparse.ArgumentParser, provider, output_base, source_list, vis: bool = False):
     mesh_path, vcam, ref_bin_path, sampler_mult = provider[idx]
+    raw_obj_mesh = o3d.io.read_triangle_mesh(mesh_path)
+    raw_mesh_verts = np.asarray(raw_obj_mesh.vertices)
+    shape_size = np.linalg.norm(np.amax(raw_mesh_verts, axis=0) - np.amax(raw_mesh_verts, axis=0))/2
+    sampler_mult /= shape_size
+
     print(mesh_path)
 
     def call_cuda_sampler(num_vcam):
@@ -33,7 +38,7 @@ def generate_samples(idx: int, args: argparse.ArgumentParser, provider, output_b
         vcam_file_path = output_base / ("%06d.cam" % idx)
 
         # Sample cameras
-        vcam_ext_sampled = np.random.choice(vcam[1], num_vcam, replace=True)
+        vcam_ext_sampled = np.random.choice(vcam[1], num_vcam, replace=False)
         # Save the camera
         with vcam_file_path.open('wb') as f:
             np.asarray(vcam[0]).flatten().astype(np.float32).tofile(f)
@@ -46,7 +51,7 @@ def generate_samples(idx: int, args: argparse.ArgumentParser, provider, output_b
                         '-c', str(vcam_file_path),
                         '-r', str(args.sample_method),
                         '--surface', str(surface_tmp_path)]
-        arg_list_data = arg_list_common + ['-p', '0.8', '--var', str(args.sampler_var), '-e', str(0.1 * 2.5)]
+        arg_list_data = arg_list_common + ['-p', '0.8', '--var', str(args.sampler_var), '-e', str(sampler_mult * 1.5)]
         if ref_bin_path is not None:
             arg_list_data += ['--ref', ref_bin_path, '--max_ref_dist', str(args.max_ref_dist)]
 
@@ -86,6 +91,7 @@ def generate_samples(idx: int, args: argparse.ArgumentParser, provider, output_b
 
     data_arr = np.concatenate(data_arr, axis=0) * sampler_mult
     surface_arr = np.concatenate(surface_arr, axis=0)
+    surface_arr[:,0:3] *= sampler_mult
 
     # Badly, some surface arr may have NaN normal, we prune them
     surface_arr_nan_row = np.any(np.isnan(surface_arr), axis=1)
