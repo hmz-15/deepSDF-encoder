@@ -1,0 +1,54 @@
+run_name: "train_cutting_v3"
+
+num_epochs: 600
+batch_size: 256
+num_workers: 20
+batch_split: 1 # use 1
+num_sdf_samples: 8192 # number of sdf samples for training
+
+# whether to predict uncertainty of sdf, use negtive log likelyhood loss if enabled
+pred_sdf_std: false
+
+train_encoder: true
+train_decoder: true
+run_parallel: false # parallel training
+
+# Code specification
+code_bound: null
+code_length: 16 # latent vector length
+
+# Dataset
+train_set:
+  - { "data_path": "di-datasets/cutting_shape", "num_surface_sample": 128, "augment_noise": [0.025, 40.0]}
+
+lr_schedule:
+  # For decoder parameters
+  - { "Type" : "Step", "Initial" : 0.001, "Interval" : 100, "Factor" : 0.8 }
+  # For encoder parameters
+  - { "Type" : "Step", "Initial" : 0.001, "Interval" : 100, "Factor" : 0.8 }
+
+# Decoder specification
+decoder_name: "di_decoder"
+decoder_specs:
+  dims: [ 64, 64, 64, 64 ]
+  dropout: [0, 1, 2, 3, 4, 5]
+  dropout_prob: 0.2
+  norm_layers: [0, 1, 2, 3, 4, 5]
+  latent_in: [3]
+  weight_norm: true
+
+# Encoder specification
+encoder_name: "di_encoder"
+encoder_specs:
+  per_point_feat: [ 6, 32, 64, 128 ]
+  bn: {"class": "BatchNorm"}
+
+# Snapshots saving parameters (save checkpoints)
+snapshot_frequency: 100
+additional_snapshots: [2, 50]
+
+# SDF samples
+training_loss:
+    enforce_minmax: true
+    clamping_distance: 0.2
+    code_reg_lambda: 1.0e-2
