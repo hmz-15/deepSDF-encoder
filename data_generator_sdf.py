@@ -24,11 +24,13 @@ _bad_counter = Value('i', 0)
 
 def generate_samples(idx: int, args: argparse.ArgumentParser, provider, output_base, source_list, vis: bool = False):
     mesh_path, vcam, ref_bin_path, sampler_mult = provider[idx]
-    # raw_obj_mesh = o3d.io.read_triangle_mesh(mesh_path)
-    # raw_mesh_verts = np.asarray(raw_obj_mesh.vertices)
-    # shape_size = np.linalg.norm(np.amax(raw_mesh_verts, axis=0) - np.amax(raw_mesh_verts, axis=0))/2
-    # offset = (np.amax(raw_mesh_verts, axis=0) + np.amax(raw_mesh_verts, axis=0))/2
-    # sampler_mult /= shape_size
+    raw_obj_mesh = o3d.io.read_triangle_mesh(mesh_path)
+    raw_mesh_verts = np.asarray(raw_obj_mesh.vertices)
+    shape_size = np.linalg.norm(np.amax(raw_mesh_verts, axis=0) - np.amin(raw_mesh_verts, axis=0))
+    offset = (np.amax(raw_mesh_verts, axis=0) + np.amin(raw_mesh_verts, axis=0))/2
+
+    raw_mesh_verts = (raw_mesh_verts - offset) / shape_size
+    sampler_mult /= shape_size
 
     print(mesh_path)
 
@@ -47,12 +49,12 @@ def generate_samples(idx: int, args: argparse.ArgumentParser, provider, output_b
         # Call CUDA sampler
         arg_list_common = [str(CUDA_SAMPLER_PATH),
                         '-m', mesh_path,
-                        '-s', str(int(args.sampler_count * sampler_mult * sampler_mult)),
+                        '-s', str(int(args.sampler_count)),
                         '-o', str(output_tmp_path),
                         '-c', str(vcam_file_path),
                         '-r', str(args.sample_method),
                         '--surface', str(surface_tmp_path)]
-        arg_list_data = arg_list_common + ['-p', '0.8', '--var', str(args.sampler_var), '-e', str(sampler_mult * 1.5)]
+        arg_list_data = arg_list_common + ['-p', '0.8', '--var', str(args.sampler_var), '-e', str(0.2)]
         if ref_bin_path is not None:
             arg_list_data += ['--ref', ref_bin_path, '--max_ref_dist', str(args.max_ref_dist)]
 
@@ -90,8 +92,11 @@ def generate_samples(idx: int, args: argparse.ArgumentParser, provider, output_b
             _bad_counter.value += 1
         return
 
-    data_arr = np.concatenate(data_arr, axis=0) * sampler_mult
+    data_arr = np.concatenate(data_arr, axis=0)
+    data_arr[:,0:3] -= offset
+    data_arr *= sampler_mult
     surface_arr = np.concatenate(surface_arr, axis=0)
+    surface_arr[:,0:3] -= offset
     surface_arr[:,0:3] *= sampler_mult
 
     # Badly, some surface arr may have NaN normal, we prune them
@@ -114,7 +119,7 @@ def generate_samples(idx: int, args: argparse.ArgumentParser, provider, output_b
         mesh_idx = _counter.value
         _counter.value += 1
         source_list.append([provider.get_source(idx), mesh_idx])
-        print(f"{_counter.value}/ {len(provider)}")
+        print(f"{_counter.value}/ {len(provider)}, bad shape {_bad_counter.value}/ {len(provider)}")
 
     output_data = {"sdf_data": data_arr,
                    "pc_data": surface_arr}
@@ -128,7 +133,16 @@ def generate_samples(idx: int, args: argparse.ArgumentParser, provider, output_b
         surface_pcd = o3d.geometry.PointCloud()
         surface_pcd.points = o3d.utility.Vector3dVector(surface_arr[:, :3])
         surface_pcd.normals = o3d.utility.Vector3dVector(surface_arr[:, 3:])
-        o3d.io.write_point_cloud(str(output_pc_path), surface_pcd)    
+        o3d.io.write_point_cloud(str(output_pc_path), surface_pcd)   
+
+    # Output mesh
+    if args.write_normalized_mesh:
+        print("Output mesh...")
+        output_mesh_path = output_base / "mesh" / ("%06d.obj" % mesh_idx)
+        mesh_norm = o3d.geometry.TriangleMesh()
+        mesh_norm.vertices = o3d.utility.Vector3dVector(raw_mesh_verts)
+        mesh_norm.triangles = raw_obj_mesh.triangles
+        o3d.io.write_triangle_mesh(str(output_mesh_path), mesh_norm)
 
 
 if __name__ == '__main__':
@@ -157,6 +171,7 @@ if __name__ == '__main__':
     output_path.mkdir(parents=True, exist_ok=True)
 
     (output_path / "pc").mkdir(exist_ok=True, parents=True)
+    (output_path / "mesh").mkdir(exist_ok=True, parents=True)
     (output_path / "payload").mkdir(exist_ok=True, parents=True)
 
     with (output_path / "config.json").open("w") as f:

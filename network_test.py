@@ -43,10 +43,19 @@ def load_models(training_hyper_path, use_epoch, device):
 
 
 def test_single(args, device, encoder, decoder, input_pc, gt_sdf_data=None):
-    # Encoding
-    print("Encoding...")
+    # Normalize
     input_pc_xyz = np.array(input_pc.points)
     input_pc_normal = np.array(input_pc.normals)
+    offset = (np.amax(input_pc_xyz, axis=0) + np.amin(input_pc_xyz, axis=0)) / 2
+    scale = np.linalg.norm(np.amax(input_pc_xyz, axis=0) - np.amin(input_pc_xyz, axis=0))
+
+    input_pc_xyz = (input_pc_xyz - offset) / scale
+    if not gt_sdf_data is None:
+        gt_sdf_data /= scale
+
+    # Encoding
+    print("Encoding...")
+    
     input_pc_array = np.concatenate([input_pc_xyz, input_pc_normal], axis=1)
     input_pc_tensor = torch.from_numpy(input_pc_array).to(device).float()
 
@@ -125,7 +134,7 @@ def test_single(args, device, encoder, decoder, input_pc, gt_sdf_data=None):
         # .data.cpu().numpy()
         print((sdf_values.squeeze() - gt_sdf_data[:,3]).abs().sum())
 
-    return final_mesh, latent_vect.cpu().numpy()[0,:]
+    return final_mesh, latent_vect.cpu().numpy()[0,:], scale
 
 
 if __name__ == '__main__':
@@ -175,8 +184,9 @@ if __name__ == '__main__':
             o3d.visualization.draw_geometries([input_pc])
 
         # Test for single pointcloud
-        output_mesh, latent_vect = test_single(args, device, encoder, decoder, input_pc, gt_sdf_data)
+        output_mesh, latent_vect, scale = test_single(args, device, encoder, decoder, input_pc, gt_sdf_data)
         print("latent vector: ", latent_vect)
+        print("scale: ", scale)
 
         # Save mesh & visualize
         output_path = Path(args.output_path)
