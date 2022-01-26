@@ -1,3 +1,4 @@
+from asyncio.format_helpers import _format_callback_source
 import os
 import importlib
 import json
@@ -161,6 +162,8 @@ if __name__ == '__main__':
 
     # Test
     print("Start testing...")
+    latent_dict = dict()
+    latent_dim = None
     counter = 0
     for file in file_list:
         # Load input pc and convert into (N, 6) array
@@ -184,11 +187,16 @@ if __name__ == '__main__':
         print("latent vector: ", latent_vect)
         print("scale: ", scale)
 
+        latent_dim = len(latent_vect)
+
         # Save mesh & visualize
         output_path = Path(args.output_path)
         output_path.mkdir(parents=True, exist_ok=True)
         output_file = str(output_path) + "/reconstructed_" + file.split("/")[-1]
         o3d.io.write_triangle_mesh(output_file, output_mesh)
+
+        object_id = file.split('/')[-1].split(".")[0]
+        latent_dict[object_id] = latent_vect
 
         if args.vis:
             o3d.visualization.draw_geometries([output_mesh, input_pc])
@@ -196,3 +204,15 @@ if __name__ == '__main__':
         counter += 1
         if (counter >= args.max_shape_num):
             break
+
+    output_path = Path(args.output_path)
+    output_path.mkdir(parents=True, exist_ok=True)
+    latent_file = str(output_path) + "/latent_vectors.csv"
+
+    with open(latent_file, "w") as fout:
+        format_str = "{}," * (latent_dim + 1)
+        format_str = format_str[:-1] + '\n'
+        for k, v in latent_dict.items():
+            fout.write(format_str.format(k, *v))
+    
+    print("latent vectors are saved at: {}".format(latent_file))
