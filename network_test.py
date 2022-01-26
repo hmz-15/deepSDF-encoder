@@ -108,16 +108,12 @@ def test_single(args, device, encoder, decoder, input_pc, gt_sdf_data=None):
     sdf_values = sdf_values.reshape(N, N, N)
 
     # Generate mesh
-    level = 0.0
-    if np.min(sdf_values) > 0.0:
-        level = np.min(sdf_values)+0.01
-    elif np.max(sdf_values) < 0.0:
-        level = np.max(sdf_values)-0.01
     vertices, triangles, normals, values = measure.marching_cubes(
-        sdf_values, level = level, spacing=[voxel_size] * 3)
+        sdf_values, level = 0.0, spacing=[voxel_size] * 3)
     
-    vertices[:, [0,1]] = vertices[:, [1,0]]
+    # vertices[:, [0,1]] = vertices[:, [1,0]]
     vertices = vertices + voxel_origin
+    vertices = vertices * scale + offset
 
     final_mesh = o3d.geometry.TriangleMesh()
     # The pre-conversion is saving tons of time
@@ -183,8 +179,8 @@ if __name__ == '__main__':
             gt_sdf_data = data["sdf_data"]
 
         # Create visualization
-        if args.vis:
-            o3d.visualization.draw_geometries([input_pc])
+        # if args.vis:
+        #     o3d.visualization.draw_geometries([input_pc])
 
         # Test for single pointcloud
         output_mesh, latent_vect, scale = test_single(args, device, encoder, decoder, input_pc, gt_sdf_data)
@@ -203,7 +199,7 @@ if __name__ == '__main__':
         latent_dict[object_id] = latent_vect
 
         if args.vis:
-            o3d.visualization.draw_geometries([output_mesh])
+            o3d.visualization.draw_geometries([output_mesh, input_pc])
         
         counter += 1
         if (counter >= args.max_shape_num):

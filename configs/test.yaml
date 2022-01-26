@@ -1,12 +1,12 @@
 # Network parameters 
-training_hyper_path: "di-checkpoints/train_cutting/hyper.json"
-use_epoch: 500
+training_hyper_path: "di-checkpoints/train_cutting_v3/hyper.json"
+use_epoch: 600
 
 # If input path ends with .ply, we take one file; if input path is a directory, we take all the files sequentially 
 # input_path: "di-datasets/cutting_shape/pc/000001.ply"
-input_path: "di-datasets/cutting_shape/pc"
+input_path: "di-datasets/cutting_shape_unit/pc"
 
-output_path: "di-outputs/cutting_shape"
+output_path: "di-outputs/cutting_shape_unit"
 max_shape_num: 10
 
 resolution: 256
