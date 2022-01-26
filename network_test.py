@@ -165,6 +165,7 @@ if __name__ == '__main__':
     latent_dict = dict()
     latent_dim = None
     counter = 0
+
     for file in file_list:
         # Load input pc and convert into (N, 6) array
         input_pc = o3d.io.read_point_cloud(file)
@@ -196,8 +197,12 @@ if __name__ == '__main__':
         o3d.io.write_triangle_mesh(output_file, output_mesh)
 
         object_id = file.split('/')[-1].split(".")[0]
-        latent_dict[object_id] = latent_vect
 
+        latent_dict[object_id] = {
+            "latent": latent_vect.tolist(),
+            "scale": scale
+        }
+        
         if args.vis:
             o3d.visualization.draw_geometries([output_mesh, input_pc])
         
@@ -207,12 +212,9 @@ if __name__ == '__main__':
 
     output_path = Path(args.output_path)
     output_path.mkdir(parents=True, exist_ok=True)
-    latent_file = str(output_path) + "/latent_vectors.csv"
+    latent_file = str(output_path) + "/latent_scale.json"
 
     with open(latent_file, "w") as fout:
-        format_str = "{}," * (latent_dim + 1)
-        format_str = format_str[:-1] + '\n'
-        for k, v in latent_dict.items():
-            fout.write(format_str.format(k, *v))
+        fout.write( json.dumps(latent_dict, indent=4) )
     
     print("latent vectors are saved at: {}".format(latent_file))
