@@ -50,34 +50,25 @@ def load_json(filename):
     return data
 
 
-def load_latent_file(latent_file):
-    id2latent = {}
-
-    with open(latent_file, "r") as fin:
-        for line in fin:
-            tkns = line.split(',')
-            id2latent[int(tkns[0])] = [float(it) for it in tkns[1:]]
-    
-    return id2latent
-
-
 def meshfilename_to_latent(source_file, latent_file, output_file):
     source_data = load_json(source_file)
-    id2latent = load_latent_file(latent_file)
+
+    # {
+    #     "id": {"latent": [xx, xx, ...], "scale": xx}
+    # }
+    latent_json = load_json(latent_file)
     
     id2filename = {
         it[1]: it[0].split('/')[-1].split('.')[0] for it in source_data
     }
 
     filename2latent = {
-        id2filename[k]: v for k, v in id2latent.items()
+        id2filename[int(k)]: v['latent'] for k, v in latent_json.items()
     }
-
-
 
     data = {
         "mesh_source": "/".join(source_data[0][0].split('/')[:-1]),
-        "mapping": filename2latent
+        "latent": filename2latent
     }
     
     with open(output_file, "w") as fout:
