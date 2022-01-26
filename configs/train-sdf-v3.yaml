@@ -1,7 +1,7 @@
 run_name: "train_cutting_v3"
 
 num_epochs: 600
-batch_size: 256
+batch_size: 64
 num_workers: 20
 batch_split: 1 # use 1
 num_sdf_samples: 8192 # number of sdf samples for training
@@ -19,7 +19,7 @@ code_length: 16 # latent vector length
 
 # Dataset
 train_set:
-  - { "data_path": "di-datasets/cutting_shape", "num_surface_sample": 128, "augment_noise": [0.025, 40.0]}
+  - { "data_path": "di-datasets/cutting_shape_unit", "num_surface_sample": 128, "augment_noise": [0.025, 40.0]}
 
 lr_schedule:
   # For decoder parameters
