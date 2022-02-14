@@ -1,14 +1,15 @@
 provider: cutting_shape
 
 provider_kwargs:
-  cutting_shape_path: "/home/zeyu/Workspace/OnGoing/Topology-Fluent/Topology-Fluent-Dataset/unit_aligned_mesh_single"
+  cutting_shape_path: "/home/zeyu/Workspace/OnGoing/Topology-Fluent/Topology-Fluent-Dataset/canonical_mesh"
 
-output: "di-datasets/cutting_shape_all_unit"
+output: "di-datasets/cutting_shape_unit"
 
 sample_method: 1
 sampler_var: 0.00015
-sampler_count: 400000
+sampler_count: 800000
 
 write_pc: true
+write_normalized_mesh: true
 
 nproc: 32
