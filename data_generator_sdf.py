@@ -82,8 +82,12 @@ def generate_samples(idx: int, args: argparse.ArgumentParser, provider, output_b
         os.unlink(vcam_file_path)
         return is_bad, data_arr, surface_arr
 
-    # Sample full data
-    is_bad, data_arr, surface_arr = call_cuda_sampler(len(vcam[1]))
+    # Test watertight
+    if not raw_obj_mesh.is_watertight():
+        is_bad = True
+    else:
+        # Sample full data
+        is_bad, data_arr, surface_arr = call_cuda_sampler(len(vcam[1]))
 
     if is_bad:
         print("Bad!")
